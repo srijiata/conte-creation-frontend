@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Image Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>AI Image Generator 🎨</h1>
+    <input type="text" id="promptInput" placeholder="Enter your prompt here..." />
+    <button onclick="generateImage()">Generate</button>
+
+    <div id="result">
+      <img id="generatedImage" style="display:none;" />
+      <p id="caption"></p>
+      <p id="hashtags"></p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
