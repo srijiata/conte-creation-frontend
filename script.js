@@ -1,42 +1,63 @@
-const API_URL = "https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate"; // <-- Replace with your API Gateway URL
+const API_URL = "https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate"; // replace with your POST API
 
-async function generateImage() {
-  const prompt = document.getElementById("promptInput").value;
+const promptInput = document.getElementById("promptInput");
+const generateBtn = document.getElementById("generateBtn");
+const generatedImage = document.getElementById("generatedImage");
+const captionEl = document.getElementById("caption");
+const hashtagsEl = document.getElementById("hashtags");
+
+generateBtn.addEventListener("click", async () => {
+  const prompt = promptInput.value.trim();
   if (!prompt) {
     alert("Please enter a prompt!");
     return;
   }
 
-  document.getElementById("caption").innerText = "Generating...";
-  document.getElementById("hashtags").innerText = "";
-  document.getElementById("generatedImage").style.display = "none";
+  // show loading
+  captionEl.innerText = "Generating...";
+  hashtagsEl.innerText = "";
+  generatedImage.style.display = "none";
 
   try {
-    const response = await fetch(API_URL, {
+    const res = await fetch(API_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ prompt })
     });
 
-    const data = await response.json();
+    const data = await res.json();
+    console.log("API response:", data);
 
-    if (data.s3_url) {
-      document.getElementById("generatedImage").src = data.s3_url;
-      document.getElementById("generatedImage").style.display = "block";
+    // Image
+    if (data.image_url) {
+      generatedImage.src = data.image_url; // S3 URL version
+      generatedImage.style.display = "block";
+    } else if (data.image_base64) {
+      generatedImage.src = `data:image/png;base64,${data.image_base64}`; // Base64 version
+      generatedImage.style.display = "block";
+    } else {
+      generatedImage.style.display = "none";
     }
 
+    // Caption
     if (data.caption) {
-      document.getElementById("caption").innerText = "Caption: " + data.caption;
+      captionEl.innerText = "Caption: " + (typeof data.caption === "string" ? data.caption : data.caption.S || "");
+    } else {
+      captionEl.innerText = "";
     }
 
-    if (data.hashtags) {
-      // DynamoDB saves hashtags as [{S:"#AI"}...], so flatten
-      let tags = data.hashtags.map(h => h.S).join(", ");
-      document.getElementById("hashtags").innerText = "Hashtags: " + tags;
+    // Hashtags
+    if (data.hashtags && Array.isArray(data.hashtags)) {
+      const tags = data.hashtags.map(h => (typeof h === "string" ? h : h.S)).filter(Boolean).join(", ");
+      hashtagsEl.innerText = tags ? "Hashtags: " + tags : "";
+    } else {
+      hashtagsEl.innerText = "";
     }
 
-  } catch (error) {
-    console.error("Error:", error);
-    document.getElementById("caption").innerText = "Something went wrong!";
+  } catch (err) {
+    console.error("Error:", err);
+    captionEl.innerText = "Something went wrong!";
+    hashtagsEl.innerText = "";
+    generatedImage.style.display = "none";
   }
-}
+});
