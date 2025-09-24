@@ -1,4 +1,4 @@
-const API_URL = "https://wkyj4z62zi.execute-api.ap-south-1.amazonaws.com"; // <-- Replace with your API Gateway URL
+const API_URL = "https://x8k2a4pkye.execute-api.ap-south-1.amazonaws.com/PROD"; // <-- Replace with your API Gateway URL
 
 async function generateImage() {
   const prompt = document.getElementById("promptInput").value;
