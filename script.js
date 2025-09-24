@@ -1,4 +1,4 @@
-const API_URL = "https://<your-api-id>.execute-api.<region>.amazonaws.com/dev/generate"; // replace with your POST API
+const API_URL = "https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate"; // replace with your POST API
 
 const promptInput = document.getElementById("promptInput");
 const generateBtn = document.getElementById("generateBtn");
