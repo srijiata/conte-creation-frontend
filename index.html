@@ -4,60 +4,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI Image Generator</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #f4f4f9;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-    }
-
-    .container {
-      background: white;
-      padding: 20px;
-      border-radius: 12px;
-      box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-      text-align: center;
-      width: 400px;
-    }
-
-    input {
-      width: 80%;
-      padding: 10px;
-      margin-bottom: 10px;
-      border-radius: 8px;
-      border: 1px solid #ccc;
-    }
-
-    button {
-      padding: 10px 20px;
-      border: none;
-      background: #007bff;
-      color: white;
-      font-size: 16px;
-      border-radius: 8px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background: #0056b3;
-    }
-
-    img {
-      max-width: 100%;
-      margin-top: 20px;
-      border-radius: 8px;
-    }
-  </style>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
     <h1>AI Image Generator 🎨</h1>
-    <input type="text" id="promptInput" placeholder="Enter your prompt here..." />
-    <button onclick="generateImage()">Generate</button>
+    <input type="text" id="promptInput" placeholder="Enter your prompt..." />
+    <button id="generateBtn">Generate</button>
 
     <div id="result">
       <img id="generatedImage" style="display:none;" />
@@ -66,52 +19,6 @@
     </div>
   </div>
 
-  <script>
-    const API_URL = "https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate";
-
-    // 👆 Replace with your actual API Gateway endpoint
-
-    async function generateImage() {
-      const prompt = document.getElementById("promptInput").value;
-      if (!prompt) {
-        alert("Please enter a prompt!");
-        return;
-      }
-
-      document.getElementById("caption").innerText = "Generating...";
-      document.getElementById("hashtags").innerText = "";
-      document.getElementById("generatedImage").style.display = "none";
-
-      try {
-        const response = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt })
-        });
-
-        const data = await response.json();
-
-        if (data.s3_url) {
-          document.getElementById("generatedImage").src = data.s3_url;
-          document.getElementById("generatedImage").style.display = "block";
-        }
-
-        if (data.caption) {
-          document.getElementById("caption").innerText = "Caption: " + data.caption;
-        }
-
-        if (data.hashtags) {
-          // DynamoDB saves hashtags as [{S:"#AI"}...] → flatten
-          let tags = data.hashtags.map(h => h.S).join(", ");
-          document.getElementById("hashtags").innerText = "Hashtags: " + tags;
-        }
-
-      } catch (error) {
-        console.error("Error:", error);
-        document.getElementById("caption").innerText = "Something went wrong!";
-      }
-    }
-  </script>
+  <script src="script.js"></script>
 </body>
 </html>
-
