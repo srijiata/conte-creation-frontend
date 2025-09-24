@@ -1,4 +1,4 @@
-const API_URL = "https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate"; // replace with your POST API
+const API_URL = "https://<your-api-id>.execute-api.<region>.amazonaws.com/dev/generate"; // replace with your POST API
 
 const promptInput = document.getElementById("promptInput");
 const generateBtn = document.getElementById("generateBtn");
@@ -13,7 +13,7 @@ generateBtn.addEventListener("click", async () => {
     return;
   }
 
-  // show loading
+  // Show loading
   captionEl.innerText = "Generating...";
   hashtagsEl.innerText = "";
   generatedImage.style.display = "none";
@@ -30,26 +30,20 @@ generateBtn.addEventListener("click", async () => {
 
     // Image
     if (data.image_url) {
-      generatedImage.src = data.image_url; // S3 URL version
+      generatedImage.src = data.image_url;
       generatedImage.style.display = "block";
-    } else if (data.image_base64) {
-      generatedImage.src = `data:image/png;base64,${data.image_base64}`; // Base64 version
-      generatedImage.style.display = "block";
-    } else {
-      generatedImage.style.display = "none";
     }
 
     // Caption
     if (data.caption) {
-      captionEl.innerText = "Caption: " + (typeof data.caption === "string" ? data.caption : data.caption.S || "");
+      captionEl.innerText = "Caption: " + data.caption;
     } else {
       captionEl.innerText = "";
     }
 
     // Hashtags
     if (data.hashtags && Array.isArray(data.hashtags)) {
-      const tags = data.hashtags.map(h => (typeof h === "string" ? h : h.S)).filter(Boolean).join(", ");
-      hashtagsEl.innerText = tags ? "Hashtags: " + tags : "";
+      hashtagsEl.innerText = "Hashtags: " + data.hashtags.join(", ");
     } else {
       hashtagsEl.innerText = "";
     }
