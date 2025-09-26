@@ -1,5 +1,5 @@
 // Configuration - Replace with your actual API Gateway URL
-const API_URL = 'https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate';
+const API_URL = 'https://your-api-gateway-url.amazonaws.com/your-stage/generate';
 
 // DOM Elements
 const promptForm = document.getElementById('promptForm');
@@ -152,44 +152,196 @@ async function generateContent(prompt) {
 
 async function displayResults(data, originalPrompt) {
     try {
+        console.log('API Response:', data); // Debug log
+        
+        // Handle different possible response structures
+        let imageUrl = null;
+        let caption = '';
+        let hashtags = '';
+        
+        // Try different possible image URL fields
+        if (data.s3_url) {
+            imageUrl = data.s3_url;
+        } else if (data.image_url) {
+            imageUrl = data.image_url;
+        } else if (data.imageUrl) {
+            imageUrl = data.imageUrl;
+        } else if (data.image) {
+            imageUrl = data.image;
+        }
+        
+        // Handle captions (your Lambda returns an array)
+        if (data.captions && Array.isArray(data.captions)) {
+            // Use the first caption or combine multiple
+            caption = data.captions[0] || '';
+            if (data.captions.length > 1) {
+                // Optionally show the best/longest caption
+                caption = data.captions.reduce((best, current) => 
+                    current.length > best.length ? current : best
+                );
+            }
+        } else if (data.caption) {
+            caption = data.caption;
+        } else if (data.generated_caption) {
+            caption = data.generated_caption;
+        } else if (data.description) {
+            caption = data.description;
+        } else {
+            caption = generateFallbackCaption(originalPrompt);
+        }
+        
+        // Handle hashtags (your Lambda returns an array)
+        if (data.hashtags && Array.isArray(data.hashtags)) {
+            // Join hashtags with spaces
+            hashtags = data.hashtags.join(' ');
+        } else if (data.hashtags && typeof data.hashtags === 'string') {
+            hashtags = data.hashtags;
+        } else if (data.generated_hashtags) {
+            if (Array.isArray(data.generated_hashtags)) {
+                hashtags = data.generated_hashtags.join(' ');
+            } else {
+                hashtags = data.generated_hashtags;
+            }
+        } else if (data.tags) {
+            if (Array.isArray(data.tags)) {
+                hashtags = data.tags.map(tag => tag.startsWith('#') ? tag : `#${tag}`).join(' ');
+            } else {
+                hashtags = data.tags;
+            }
+        } else {
+            hashtags = generateFallbackHashtags(originalPrompt);
+        }
+        
         // Store current results
         currentResults = {
-            image: data.image_url || data.s3_url || null,
-            caption: data.caption || generateFallbackCaption(originalPrompt),
-            hashtags: data.hashtags || generateFallbackHashtags(originalPrompt),
-            prompt: originalPrompt
+            image: imageUrl,
+            caption: caption,
+            hashtags: hashtags,
+            prompt: originalPrompt,
+            labels: data.labels || [], // Store labels for debugging
+            allCaptions: data.captions || [], // Store all captions
+            imageId: data.image_id || data.imageId || null
         };
 
-        // Display image
+        console.log('Processed Results:', currentResults); // Debug log
+
+        // Display image with better error handling
         if (currentResults.image) {
-            generatedImage.src = currentResults.image;
-            generatedImage.onload = function() {
+            // Show loading state for image
+            generatedImage.style.opacity = '0.5';
+            generatedImage.src = '';
+            
+            // Create a new image to test if URL is valid
+            const testImage = new Image();
+            testImage.crossOrigin = 'anonymous'; // Handle CORS if needed
+            
+            testImage.onload = function() {
+                generatedImage.src = currentResults.image;
+                generatedImage.style.opacity = '1';
                 showToast('Image loaded successfully!', 2000);
             };
-            generatedImage.onerror = function() {
-                // If S3 URL fails, show placeholder
-                generatedImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIEdlbmVyYXRlZDwvdGV4dD48L3N2Zz4=';
-                showToast('Image generated but couldn\'t be loaded directly', 3000);
+            
+            testImage.onerror = function() {
+                console.error('Image failed to load:', currentResults.image);
+                // Check if it's a CORS issue by trying a different approach
+                generatedImage.src = currentResults.image;
+                generatedImage.style.opacity = '1';
+                showToast('Image generated! If not visible, check S3 bucket CORS settings.', 4000);
             };
+            
+            testImage.src = currentResults.image;
         } else {
-            // Show placeholder if no image URL
-            generatedImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtZmFtaWx5PSJBcmlhbCwgc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxOCIgZmlsbD0iIzk5OTk5OSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZHk9Ii4zZW0iPkltYWdlIEdlbmVyYXRlZDwvdGV4dD48L3N2Zz4=';
+            // No image URL provided
+            generatedImage.src = createPlaceholderImage(originalPrompt);
+            generatedImage.style.opacity = '1';
+            showToast('Content generated successfully!', 3000);
         }
 
-        // Display caption and hashtags
-        generatedCaption.textContent = currentResults.caption;
-        generatedHashtags.textContent = currentResults.hashtags;
+        // Display caption and hashtags with better formatting
+        if (currentResults.caption) {
+            generatedCaption.textContent = currentResults.caption;
+            generatedCaption.title = currentResults.caption; // Add tooltip for long text
+        } else {
+            generatedCaption.textContent = 'Caption generation in progress...';
+        }
+        
+        if (currentResults.hashtags) {
+            // Ensure hashtags are properly formatted
+            const formattedHashtags = formatHashtags(currentResults.hashtags);
+            generatedHashtags.textContent = formattedHashtags;
+            generatedHashtags.title = formattedHashtags; // Add tooltip
+        } else {
+            generatedHashtags.textContent = 'Hashtags generation in progress...';
+        }
+
+        // Show additional info if available
+        if (data.labels && data.labels.length > 0) {
+            console.log('Image labels detected:', data.labels);
+        }
 
         // Show results with animation
         showResults();
         
+        // Add caption cycle button if multiple captions available
+        setTimeout(() => {
+            addCaptionCycleButton();
+        }, 100);
+        
         // Scroll to results
-        results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => {
+            results.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
         
     } catch (error) {
         console.error('Error displaying results:', error);
-        showError('Generated content successfully, but there was an error displaying it.');
+        showError('Generated content successfully, but there was an error displaying it. Check console for details.');
     }
+}
+
+function createPlaceholderImage(prompt) {
+    // Create a more informative placeholder
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 300;
+    const ctx = canvas.getContext('2d');
+    
+    // Background
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(0, 0, 400, 300);
+    
+    // Text
+    ctx.fillStyle = '#999999';
+    ctx.font = '18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('Image Generated', 200, 140);
+    ctx.font = '14px Arial';
+    ctx.fillText('Check S3 bucket permissions', 200, 160);
+    ctx.fillText('or API response format', 200, 180);
+    
+    return canvas.toDataURL();
+}
+
+function formatHashtags(hashtags) {
+    if (!hashtags) return '';
+    
+    // If it's already formatted, return as is
+    if (hashtags.includes('#')) return hashtags;
+    
+    // If it's a comma-separated list, format it
+    if (hashtags.includes(',')) {
+        return hashtags.split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0)
+            .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
+            .join(' ');
+    }
+    
+    // If it's a space-separated list, format it
+    return hashtags.split(' ')
+        .map(tag => tag.trim())
+        .filter(tag => tag.length > 0)
+        .map(tag => tag.startsWith('#') ? tag : `#${tag}`)
+        .join(' ');
 }
 
 function generateFallbackCaption(prompt) {
@@ -368,6 +520,63 @@ function shareContent() {
         });
     } else {
         fallbackShare(shareText);
+    }
+}
+
+// New function to cycle through multiple captions
+function showNextCaption() {
+    if (!currentResults.allCaptions || currentResults.allCaptions.length <= 1) {
+        showToast('Only one caption available');
+        return;
+    }
+    
+    // Find current caption index
+    const currentCaption = generatedCaption.textContent;
+    let currentIndex = currentResults.allCaptions.findIndex(cap => cap === currentCaption);
+    
+    // Move to next caption (cycle back to 0 if at end)
+    currentIndex = (currentIndex + 1) % currentResults.allCaptions.length;
+    
+    // Update display
+    generatedCaption.textContent = currentResults.allCaptions[currentIndex];
+    generatedCaption.title = currentResults.allCaptions[currentIndex];
+    
+    // Update current results
+    currentResults.caption = currentResults.allCaptions[currentIndex];
+    
+    showToast(`Caption ${currentIndex + 1} of ${currentResults.allCaptions.length}`, 2000);
+}
+
+// Add caption cycling button if multiple captions are available
+function addCaptionCycleButton() {
+    if (!currentResults.allCaptions || currentResults.allCaptions.length <= 1) {
+        return;
+    }
+    
+    const captionBox = document.querySelector('.caption-box .box-header');
+    const existingCycleBtn = captionBox.querySelector('.cycle-btn');
+    
+    if (!existingCycleBtn) {
+        const cycleBtn = document.createElement('button');
+        cycleBtn.className = 'cycle-btn';
+        cycleBtn.innerHTML = '<i class="fas fa-sync"></i>';
+        cycleBtn.title = `Cycle through ${currentResults.allCaptions.length} captions`;
+        cycleBtn.onclick = showNextCaption;
+        
+        // Add some basic styles
+        cycleBtn.style.cssText = `
+            background: #48bb78;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            margin-left: 5px;
+        `;
+        
+        captionBox.appendChild(cycleBtn);
     }
 }
 
