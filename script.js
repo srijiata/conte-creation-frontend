@@ -640,7 +640,7 @@ function addCaptionCycleButton() {
         
         // Add some basic styles
         cycleBtn.style.cssText = `
-            background: #48bb78;
+            background: #124929;
             color: white;
             border: none;
             border-radius: 6px;
