@@ -1,5 +1,5 @@
 // Configuration - Replace with your actual API Gateway URL
-const API_URL = 'https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate';
+const API_URL = 'https://your-api-gateway-url.amazonaws.com/your-stage/generate';
 
 // DOM Elements
 const promptForm = document.getElementById('promptForm');
@@ -225,36 +225,111 @@ async function displayResults(data, originalPrompt) {
 
         console.log('Processed Results:', currentResults); // Debug log
 
-        // Display image with better error handling
+        // Display image with comprehensive debugging
         if (currentResults.image) {
+            console.log('Attempting to load image:', currentResults.image);
+            
             // Show loading state for image
             generatedImage.style.opacity = '0.5';
             generatedImage.src = '';
             
-            // Create a new image to test if URL is valid
-            const testImage = new Image();
-            testImage.crossOrigin = 'anonymous'; // Handle CORS if needed
+            // Add debug info to the image container
+            const imageContainer = generatedImage.parentElement;
+            let debugInfo = imageContainer.querySelector('.debug-info');
+            if (!debugInfo) {
+                debugInfo = document.createElement('div');
+                debugInfo.className = 'debug-info';
+                debugInfo.style.cssText = `
+                    position: absolute;
+                    top: 10px;
+                    left: 10px;
+                    background: rgba(0,0,0,0.8);
+                    color: white;
+                    padding: 5px;
+                    font-size: 12px;
+                    border-radius: 4px;
+                    max-width: 200px;
+                    word-break: break-all;
+                `;
+                imageContainer.appendChild(debugInfo);
+            }
+            debugInfo.textContent = `Loading: ${currentResults.image}`;
             
-            testImage.onload = function() {
-                generatedImage.src = currentResults.image;
+            // Test if it's a valid image URL
+            fetch(currentResults.image, { method: 'HEAD' })
+                .then(response => {
+                    console.log('Image URL response:', response.status, response.headers);
+                    debugInfo.textContent = `Status: ${response.status}`;
+                    
+                    if (response.ok) {
+                        // URL is accessible, try loading image
+                        const testImage = new Image();
+                        testImage.crossOrigin = 'anonymous';
+                        
+                        testImage.onload = function() {
+                            console.log('Image loaded successfully');
+                            generatedImage.src = currentResults.image;
+                            generatedImage.style.opacity = '1';
+                            debugInfo.style.display = 'none';
+                            showToast('Image loaded successfully!', 2000);
+                        };
+                        
+                        testImage.onerror = function() {
+                            console.error('Image load failed despite 200 response');
+                            debugInfo.textContent = 'Load failed - CORS issue?';
+                            // Try loading without crossOrigin
+                            tryLoadingWithoutCors();
+                        };
+                        
+                        testImage.src = currentResults.image;
+                    } else {
+                        debugInfo.textContent = `HTTP ${response.status} - URL not accessible`;
+                        showToast(`Image URL returned ${response.status} - check S3 permissions`, 4000);
+                        useBackupImage();
+                    }
+                })
+                .catch(error => {
+                    console.error('Fetch error:', error);
+                    debugInfo.textContent = 'Fetch failed - trying direct load';
+                    // Try direct image load
+                    tryLoadingWithoutCors();
+                });
+                
+            function tryLoadingWithoutCors() {
+                console.log('Trying to load image without CORS...');
+                const directImage = new Image();
+                
+                directImage.onload = function() {
+                    console.log('Image loaded without CORS');
+                    generatedImage.src = currentResults.image;
+                    generatedImage.style.opacity = '1';
+                    debugInfo.style.display = 'none';
+                    showToast('Image loaded (CORS bypassed)!', 2000);
+                };
+                
+                directImage.onerror = function() {
+                    console.error('Direct image load also failed');
+                    debugInfo.textContent = 'All load methods failed';
+                    useBackupImage();
+                };
+                
+                directImage.src = currentResults.image;
+            }
+            
+            function useBackupImage() {
+                console.log('Using backup/placeholder image');
+                generatedImage.src = createPlaceholderImage(originalPrompt);
                 generatedImage.style.opacity = '1';
-                showToast('Image loaded successfully!', 2000);
-            };
+                debugInfo.textContent = 'Using placeholder - original failed';
+                showToast('Using placeholder - check S3 URL and permissions', 4000);
+            }
             
-            testImage.onerror = function() {
-                console.error('Image failed to load:', currentResults.image);
-                // Check if it's a CORS issue by trying a different approach
-                generatedImage.src = currentResults.image;
-                generatedImage.style.opacity = '1';
-                showToast('Image generated! If not visible, check S3 bucket CORS settings.', 4000);
-            };
-            
-            testImage.src = currentResults.image;
         } else {
+            console.log('No image URL provided in response');
             // No image URL provided
             generatedImage.src = createPlaceholderImage(originalPrompt);
             generatedImage.style.opacity = '1';
-            showToast('Content generated successfully!', 3000);
+            showToast('Content generated but no image URL provided', 3000);
         }
 
         // Display caption and hashtags with better formatting
