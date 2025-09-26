@@ -252,7 +252,7 @@ textarea::placeholder {
 
 .download-btn {
     padding: 10px 20px;
-    background: #314D50;
+    background: #315540;
     color: white;
     border: none;
     border-radius: 8px;
@@ -383,7 +383,7 @@ textarea::placeholder {
 }
 
 .copy-btn.copied {
-    background: #48bb78;
+    background: #124929;
 }
 
 .caption-box p, .hashtags-box p {
