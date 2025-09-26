@@ -1,5 +1,5 @@
 // Configuration - Replace with your actual API Gateway URL
-const API_URL = 'https://your-api-gateway-url.amazonaws.com/your-stage/generate';
+const API_URL = 'https://wq3sish8bk.execute-api.ap-south-1.amazonaws.com/dev/generate';
 
 // DOM Elements
 const promptForm = document.getElementById('promptForm');
