@@ -31,7 +31,3 @@ User Input → API Gateway → Lambda →
 - Automated tagging improves content discoverability  
 - Designed for scalability and real-time usage  
 
-## 📷 Demo
-(Add UI screenshots or output images here)
-
-## 📁 Project Structure
